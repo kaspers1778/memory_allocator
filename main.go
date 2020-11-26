@@ -7,24 +7,26 @@ import (
 	"unsafe"
 )
 
+const HEADER_SIZE = 32
+
 type Header struct {
-	Address int
+	Address uint
 	isFree bool
-	size int
+	size uint
 	nextHeader *Header
 }
 
 type Allocator struct {
-	heapSize int
-	freeSize int
-	heap []byte
+	heapSize uint
+	freeSize uint
+	heap     []byte
 	head *Header
 }
 
-func (al *Allocator)init(heapSize int)(err error){
+func (al *Allocator)init(heapSize uint)(err error){
 	al.heapSize = heapSize
 	al.freeSize = heapSize
-	al.heap,err = syscall.Mmap(-1, 0, al.heapSize, syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_PRIVATE | syscall.MAP_ANONYMOUS)
+	al.heap,err = syscall.Mmap(-1, 0, int(al.heapSize), syscall.PROT_READ | syscall.PROT_WRITE, syscall.MAP_PRIVATE | syscall.MAP_ANONYMOUS)
 	if err !=nil{
 		return err
 	}
@@ -36,10 +38,12 @@ func (al *Allocator)init(heapSize int)(err error){
 	return nil
 }
 
-func (al *Allocator)mem_alloc(size int)(*interface{}){
-	fmt.Printf("Allocated %v bytes\n",size)
+func (al *Allocator)mem_alloc(size uint)(*interface{}){
+	fmt.Printf("Allocated %v+%v bytes\n",size,HEADER_SIZE)
+	size = size+HEADER_SIZE
 	currentHeader := al.head
-	adressNum := 0
+	var adressNum uint
+	adressNum= 0
 	for currentHeader !=nil{
 		if currentHeader.isFree && currentHeader.size >= size{
 			break
@@ -65,7 +69,7 @@ func (al *Allocator)mem_alloc(size int)(*interface{}){
 }
 
 
-func (al *Allocator)mem_realloc(address *interface{},size int)(*interface{}){
+func (al *Allocator)mem_realloc(address *interface{},size uint)(*interface{}){
 	currentHeader,err := al.findHeader(address)
 	if err !=nil{
 		return nil
@@ -123,21 +127,21 @@ func (al *Allocator)mem_dump(){
 func main(){
 	var all Allocator
 	var err error
-	err = all.init(64)
+	err = all.init(1024)
 	if err!= nil{
 		panic(err)
 	}
 	all.mem_dump()
-	adr16:=all.mem_alloc(16)
+	adr16:=all.mem_alloc(216)
 	all.mem_dump()
-	adr8:=all.mem_alloc(8)
+	adr8:=all.mem_alloc(124)
 	all.mem_dump()
-	all.mem_alloc(4)
+	all.mem_alloc(64)
 	all.mem_dump()
 	all.mem_free(adr8)
 	all.mem_dump()
-	all.mem_alloc(2)
+	all.mem_alloc(32)
 	all.mem_dump()
-	all.mem_realloc(adr16,32)
+	all.mem_realloc(adr16,108)
 	all.mem_dump()
 }
